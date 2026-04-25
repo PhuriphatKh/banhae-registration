@@ -5,7 +5,7 @@ import { useUserAuth } from "../context/UserAuthContext";
 function StudentRoute({ children }) {
   const { userRole } = useUserAuth();
 
-  if (userRole !== "นักเรียน") {
+  if (userRole !== "student") {
     return <Navigate to={`/home/${userRole}`} />;
   }
 

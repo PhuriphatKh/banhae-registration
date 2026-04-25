@@ -48,8 +48,52 @@ function Navbar() {
     menu3: useRef(),
     menu4: useRef(),
   };
+
   const { logOut, user, userRole, firstName, lastName } = useUserAuth();
   const navigate = useNavigate();
+
+  const uid = user?.uid || "";
+
+  const REGISTRATION_MENU = {
+    admin: [
+      { label: "ข้อมูลส่วนตัว", path: `/profile?id=${uid}` },
+      { label: "จัดการข้อมูลผู้ใช้", path: "/usermanagement" },
+      { label: "จัดการรายวิชา", path: "/subjects-management" },
+      { label: "จัดการตารางเวลา", path: "/time-table-management" },
+      { label: "จัดการตารางเรียน", path: "/student-table-management" },
+      { label: "จัดการตารางสอน", path: "/teacher-table-management" },
+    ],
+    teacher: [
+      { label: "ข้อมูลส่วนตัว", path: `/profile?id=${uid}` },
+      { label: "ตารางสอน", path: `/teacher-table` },
+    ],
+    student: [
+      { label: "ข้อมูลส่วนตัว", path: `/profile?id=${uid}` },
+      { label: "ตารางเรียน", path: `/student-table` },
+    ],
+    default: [
+      { label: "ข้อมูลส่วนตัว", path: `/profile?id=${uid}` }
+    ]
+  };
+
+  const GRADE_MENU = {
+    admin: [{ label: "จัดการผลการเรียน", path: "/school-record-management" }],
+    teacher: [{ label: "จัดการคะแนนรายวิชา", path: `/grade-management` }],
+    student: [{ label: "ผลคะแนนรายวิชา", path: `/student-records` }],
+  };
+
+  const REQUEST_MENU = {
+    teacher: [
+      { label: "ยื่นคำขออนุมัติ", path: "/request?type=submit" },
+      { label: "ตรวจสอบคำขอ", path: "/request?type=check" },
+    ],
+    manager: [
+      { label: "ตรวจสอบคำร้อง", path: "/approval-request" }
+    ],
+    default: [
+      { label: "ไม่เปิดใช้งาน", path: "#" }
+    ]
+  };
 
   useEffect(() => {
     const handler = (e) => {
@@ -107,53 +151,15 @@ function Navbar() {
       <div className="menu-container">
         <DropdownMenu
           label="ทะเบียน"
-          links={
-            userRole === "แอดมิน"
-              ? [
-                  { label: "ข้อมูลส่วนตัว", path: `/profile?id=${user.uid}` },
-                  { label: "จัดการข้อมูลผู้ใช้", path: "/usermanagement" },
-                  { label: "จัดการรายวิชา", path: "/subjects-management" },
-                  { label: "จัดการตารางเวลา", path: "/time-table-management" },
-                  {
-                    label: "จัดการตารางเรียน",
-                    path: "/student-table-management",
-                  },
-                  {
-                    label: "จัดการตารางสอน",
-                    path: "/teacher-table-management",
-                  },
-                ]
-              : userRole === "ครู"
-              ? [
-                  { label: "ข้อมูลส่วนตัว", path: `/profile?id=${user.uid}` },
-                  { label: "ตารางสอน", path: `/teacher-table` },
-                ]
-              : userRole === "นักเรียน"
-              ? [
-                  { label: "ข้อมูลส่วนตัว", path: `/profile?id=${user.uid}` },
-                  { label: "ตารางเรียน", path: `/student-table` },
-                ]
-              : [{ label: "ข้อมูลส่วนตัว", path: `/profile?id=${user.uid}` }]
-          }
+          links={REGISTRATION_MENU[userRole] || REGISTRATION_MENU.default}
           open={dropdowns.open2}
           setOpen={(open) => setDropdowns({ ...dropdowns, open2: open })}
           menuRef={menuRefs.menu2}
         />
-        {userRole != "ผู้อำนวยการ" && (
+        {["admin", "teacher", "student"].includes(userRole) && (
           <DropdownMenu
             label="ประมวลผลการเรียน"
-            links={
-              userRole === "admin"
-                ? [
-                    {
-                      label: "จัดการผลการเรียน",
-                      path: "/school-record-management",
-                    },
-                  ]
-                : userRole === "ครู"
-                ? [{ label: "จัดการคะแนนรายวิชา", path: `/grade-management` }]
-                : [{ label: "ผลคะแนนรายวิชา", path: `/student-records` }]
-            }
+            links={GRADE_MENU[userRole]}
             open={dropdowns.open3}
             setOpen={(open) => setDropdowns({ ...dropdowns, open3: open })}
             menuRef={menuRefs.menu3}
@@ -161,16 +167,7 @@ function Navbar() {
         )}
         <DropdownMenu
           label="คำร้อง"
-          links={
-            userRole === "ครู"
-              ? [
-                  { label: "ยื่นคำขออนุมัติ", path: "/request?type=submit" },
-                  { label: "ตรวจสอบคำขอ", path: "/request?type=check" },
-                ]
-              : userRole === "ผู้อำนวยการ"
-              ? [{ label: "ตรวจสอบคำร้อง", path: "/approval-request" }]
-              : [{ label: "ไม่เปิดใช้งาน", path: "#" }]
-          }
+          links={REQUEST_MENU[userRole] || REQUEST_MENU.default}
           open={dropdowns.open4}
           setOpen={(open) => setDropdowns({ ...dropdowns, open4: open })}
           menuRef={menuRefs.menu4}

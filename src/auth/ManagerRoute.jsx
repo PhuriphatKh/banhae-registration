@@ -5,7 +5,7 @@ import { useUserAuth } from "../context/UserAuthContext";
 function ManagerRoute({ children }) {
   const { userRole } = useUserAuth();
 
-  if (userRole !== "ผู้อำนวยการ") {
+  if (userRole !== "manager") {
     return <Navigate to={`/home/${userRole}`} />;
   }
 

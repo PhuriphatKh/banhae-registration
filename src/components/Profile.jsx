@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate, Link } from "react-router";
-import { useUserAuth } from "../context/UserAuthContext";
 import { db } from "../firebase";
 import { doc, onSnapshot, collection } from "firebase/firestore";
-import logo from "../assets/logo.png";
 import "./Profile.css";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
+import useRoles from "../hooks/useRoles";
 
 // ส่วนแสดงข้อมูลสมาชิกในครอบครัว
 const FamilyInfoSection = ({
@@ -73,6 +72,7 @@ function Profile() {
   const [profileData, setProfileData] = useState({ profile: {}, address: {} });
   const location = useLocation();
   const navigate = useNavigate();
+  const { roles } = useRoles();
 
   // get profile ID from URL query parameters
   useEffect(() => {
@@ -98,7 +98,7 @@ function Profile() {
               teacherID: d.user?.teacherID || "-",
               firstName: d.user?.firstName || "-",
               lastName: d.user?.lastName || "-",
-              position: d.user?.position || "-",
+              role: d.user?.role || "-",
               classLevel: d.user?.classLevel || "-",
               taughtSubject: d.user?.taughtSubject || [],
               birthDate: d.user?.birthDate || "-",
@@ -169,6 +169,7 @@ function Profile() {
 
   // user info from profileData
   const userInfo = profileData.profile?.user || {};
+  const displayRole = roles?.find((r) => r.id === userInfo.role)?.name_th || userInfo.role;
 
   return (
     <div className="profile-page">
@@ -197,15 +198,15 @@ function Profile() {
               </tr>
               <tr>
                 <th>ตำแหน่ง</th>
-                <td>{userInfo.position}</td>
+                <td>{displayRole}</td>
               </tr>
               <tr>
-                {userInfo?.position === "นักเรียน" ? (
+                {userInfo?.role === "student" ? (
                   <th>ระดับการศึกษา</th>
-                ) : userInfo?.position === "ครู" ? (
+                ) : userInfo?.role === "teacher" ? (
                   <th>วิชาที่สอน</th>
                 ) : null}
-                {userInfo.position === "ครู" ? (
+                {userInfo.role === "teacher" ? (
                   <td>
                     <div className="d-flex">
                       <div className="d-flex flex-column justify-content-center align-items-start w-50 h-100">
@@ -246,7 +247,7 @@ function Profile() {
                       </div>
                     </div>
                   </td>
-                ) : userInfo?.position === "นักเรียน" ? (
+                ) : userInfo?.role === "student" ? (
                   <td>
                     <div className="d-flex flex-column justify-content-center align-items-start w-100 h-100">
                       {userInfo.classLevel || "-"}
@@ -266,7 +267,7 @@ function Profile() {
                     : "-"}
                 </td>
               </tr>
-              {userInfo?.position === "นักเรียน" ? (
+              {userInfo?.role === "student" ? (
                 <tr>
                   <th>เพศ</th>
                   <td>{userInfo.gender || "-"}</td>
@@ -309,7 +310,7 @@ function Profile() {
             </tbody>
           </table>
 
-          {userInfo.position === "นักเรียน" && (
+          {userInfo.role === "student" && (
             <>
               <div className="profile-title mb-1">ข้อมูลครอบครัว</div>
               <table className="profile-table">

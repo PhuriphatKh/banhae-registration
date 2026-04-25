@@ -45,12 +45,12 @@ export default function SidebarMenu({ firstName, lastName, handleLogout }) {
                 },
                 { label: "จัดการตารางสอน", path: "/teacher-table-management" },
               ]
-            : userRole === "ครู"
+            : userRole === "teacher"
             ? [
                 { label: "ข้อมูลส่วนตัว", path: `/profile?id=${user.uid}` },
                 { label: "ตารางสอน", path: `/teacher-table` },
               ]
-            : userRole === "นักเรียน"
+            : userRole === "student"
             ? [
                 { label: "ข้อมูลส่วนตัว", path: `/profile?id=${user.uid}` },
                 { label: "ตารางเรียน", path: `/student-table` },
@@ -64,7 +64,7 @@ export default function SidebarMenu({ firstName, lastName, handleLogout }) {
         </div>
       </div>
 
-      {userRole != "ผู้อำนวยการ" && (
+      {userRole != "manager" && (
         <div className="sidebar-menu-item">
           <button
             type="button"
@@ -91,7 +91,7 @@ export default function SidebarMenu({ firstName, lastName, handleLogout }) {
                     path: "/school-record-management",
                   },
                 ]
-              : userRole === "ครู"
+              : userRole === "teacher"
               ? [{ label: "จัดการคะแนนรายวิชา", path: `/grade-management` }]
               : [{ label: "ผลคะแนนรายวิชา", path: `/student-records` }]
             ).map((item, idx) => (

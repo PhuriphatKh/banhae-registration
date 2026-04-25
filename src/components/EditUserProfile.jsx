@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import Select from "react-select";
 import { useLocation, useNavigate, Link } from "react-router";
 import { useUserAuth } from "../context/UserAuthContext";
-import { useUserProfile } from "../context/ProfileDataContex";
 import {
   Form,
   Button,
@@ -29,10 +28,12 @@ import Footer from "./Footer";
 import "./EditUserProfile.css";
 import useSubjects from "../hooks/useSubjects";
 import useClassLevels from "../hooks/useClassLevels";
+import useRoles from "../hooks/useRoles";
 
 function EditUserProfile() {
   const { subjects: rawSubjects } = useSubjects();
   const { levels } = useClassLevels();
+  const { roles, loading } = useRoles();
 
   const subjects = useMemo(() => {
     return (rawSubjects || []).slice().sort((a, b) => {
@@ -152,7 +153,7 @@ function EditUserProfile() {
 
   const [error, setError] = useState("");
 
-  const { logOut, user, firstName, lastName } = useUserAuth();
+  const { userRole } = useUserAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -683,7 +684,7 @@ function EditUserProfile() {
         user: {
           firstName: regFirstName,
           lastName: regLastName,
-          position: regRole,
+          role: regRole,
           birthDate: regBirthday,
           age: regAge,
           gender: gender,
@@ -1024,11 +1025,22 @@ function EditUserProfile() {
           <Row className="mb-3">
             <Col md={6}>
               <Form.Label>ตำแหน่ง</Form.Label>
-              <Form.Control
-                value={regRole}
-                onChange={(e) => setRegRole(e.target.value)}
-                // disabled
-              />
+              {loading ? (
+                <p>กำลังโหลดตำแหน่ง...</p>
+              ) : (
+                <Form.Select
+                  value={regRole}
+                  onChange={(e) => setRegRole(e.target.value)}
+                  disabled={userRole !== "admin"}
+                >
+                  <option value="" disabled>-- กรุณาเลือกตำแหน่ง --</option>
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.id}> 
+                      {role.name_th || role.id} 
+                    </option>
+                  ))}
+                </Form.Select>
+              )}
             </Col>
             <Col md={6}>
               {regRole === "teacher" && (

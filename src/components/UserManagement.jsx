@@ -265,6 +265,63 @@ function UserManagement() {
     return subject ? renderFn(subject) : "-";
   };
 
+  const renderRoleSpecificField = () => {
+  switch (regRole) {
+    case "teacher":
+      return (
+        <div className="select-wrapper">
+          <Form.Select
+            value={regtaughtSubject}
+            onChange={(e) => setRegTaughtSubject(e.target.value)}
+            className="modern-select text-center"
+          >
+            <option value="" disabled>-- เลือกวิชาที่สอน --</option>
+            {subjects.map((subject) => (
+              <option key={subject.id} value={subject.id}>
+                {subject.id} {subject.name}
+              </option>
+            ))}
+          </Form.Select>
+        </div>
+      );
+
+    case "student":
+      return (
+        <div className="select-wrapper">
+          <Form.Select
+            value={regClassRef}
+            onChange={(e) => setRegClassRef(e.target.value)}
+            className="modern-select text-center"
+          >
+            <option value="" disabled>-- เลือกชั้นเรียน --</option>
+            {levels.map((level) => (
+              <option key={level.id} value={level.code}>
+                {level.name_th}
+              </option>
+            ))}
+          </Form.Select>
+        </div>
+      );
+
+    case "admin":
+    case "manager":
+      const idText = regRole === "admin" ? adminID : managerID;
+      return (
+        <div>
+          <Form.Control
+            type="text"
+            value={`รหัสประจำตัว : ${idText}`}
+            className="modern-input fw-bold"
+            disabled
+          />
+        </div>
+      );
+
+    default:
+      return null;
+  }
+};
+
   return (
     <div className="shool-record-management-page">
       <Navbar />
@@ -500,61 +557,7 @@ function UserManagement() {
                             </div>
                           </Col>
                           <Col>
-                            {regRole === "teacher" ? (
-                              <div className="select-wrapper">
-                                <Form.Select
-                                  value={regtaughtSubject}
-                                  onChange={(e) =>
-                                    setRegTaughtSubject(e.target.value)
-                                  }
-                                  className="modern-select text-center"
-                                >
-                                  <option value="" disabled>
-                                    -- เลือกวิชาที่สอน --
-                                  </option>
-                                  {subjects.map((subject) => (
-                                    <option key={subject.id} value={subject.id}>
-                                      {subject.id} {subject.name}
-                                    </option>
-                                  ))}
-                                </Form.Select>
-                              </div>
-                            ) : regRole === "student" ? (
-                              <div className="select-wrapper">
-                                <Form.Select
-                                  value={regClassRef}
-                                  onChange={(e) =>
-                                    setRegClassRef(e.target.value)
-                                  }
-                                  className="modern-select text-center"
-                                >
-                                  <option value="" disabled>
-                                    -- เลือกชั้นเรียน --
-                                  </option>
-                                  {levels.map((level) => (
-                                    <option key={level.id} value={level.code}>
-                                      {level.name_th}
-                                    </option>
-                                  ))}
-                                </Form.Select>
-                              </div>
-                            ) : (
-                              <div>
-                                <Form.Control
-                                  type="text"
-                                  value={
-                                    "รหัสประจำตัว : " +
-                                    (regRole === "admin"
-                                      ? adminID
-                                      : regRole === "manager"
-                                      ? managerID
-                                      : "")
-                                  }
-                                  className="modern-input fw-bold"
-                                  disabled
-                                />
-                              </div>
-                            )}
+                            {renderRoleSpecificField()}
                           </Col>
                         </Row>
 

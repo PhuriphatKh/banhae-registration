@@ -69,7 +69,7 @@ const router = createBrowserRouter([
     ),
   },
   {
-    path: "/home/นักเรียน",
+    path: "/home/student",
     element: (
       <ProtectedRoute>
         <StudentRoute>
@@ -99,7 +99,7 @@ const router = createBrowserRouter([
     ),
   },
   {
-    path: "/home/ครู",
+    path: "/home/teacher",
     element: (
       <ProtectedRoute>
         <TeacherRoute>
@@ -219,7 +219,7 @@ const router = createBrowserRouter([
     ),
   },
   {
-    path: "/home/ผู้อำนวยการ",
+    path: "/home/manager",
     element: (
       <ProtectedRoute>
         <ManagerRoute>
