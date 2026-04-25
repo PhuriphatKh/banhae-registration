@@ -1,0 +1,85 @@
+.subject-scores-table table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 20px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  overflow: hidden; /* กันไม่ให้มุมโค้งโดนบัง */
+}
+
+.subject-scores-table th {
+  border: 1px solid #ddd;
+  padding: 12px 15px;
+}
+
+.subject-scores-table td {
+  border-left: 1px solid #ddd;
+  border-right: 1px solid #ddd;
+  padding: 12px 15px;
+}
+
+.subject-scores-table th {
+  background-color: antiquewhite;
+}
+
+.subject-scores-table tr.selected {
+    background-color: #f1f1f1;
+}
+
+/* โค้งเฉพาะมุมจริง */
+.subject-scores-table thead tr:first-child th:first-child {
+  border-top-left-radius: 20px;
+}
+
+.subject-scores-table thead tr:first-child th:last-child {
+  border-top-right-radius: 20px;
+}
+
+.subject-scores-table tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 20px;
+}
+
+.subject-scores-table tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 20px;
+}
+
+.floating-alert {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  background: #d1e7dd; /* bootstrap success bg */
+  color: #0f5132; /* bootstrap success text */
+  padding: 0.65rem 1rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+  z-index: 1080;
+  font-weight: 600;
+  animation: slideDown 280ms cubic-bezier(.2,.8,.2,1) forwards;
+}
+
+/* optional fade-out when removed (works with existing setTimeout hide) */
+.floating-alert.hide {
+  animation: slideUp 240ms cubic-bezier(.2,.8,.2,1) forwards;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+@keyframes slideUp {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-18px);
+  }
+}
