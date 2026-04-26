@@ -48,8 +48,9 @@ function EditUserProfile() {
   const vacantSubjects = useMemo(() => {
     return subjects.filter(
       (s) =>
-        !Object.prototype.hasOwnProperty.call(s, "teacherId") ||
-        s.teacherId == null
+        !Object.prototype.hasOwnProperty.call(s, "teachers") ||
+        !Array.isArray(s.teachers) ||
+        s.teachers.length === 0
     );
   }, [subjects]);
   //
@@ -850,21 +851,25 @@ function EditUserProfile() {
         const toRemove = [...prev].filter((id) => !next.has(id));
         const toAdd = [...next].filter((id) => !prev.has(id));
 
-        // เอาครูออกจากวิชาที่เลิกสอน (เฉพาะถ้าวิชานั้นผูกกับครูคนนี้จริง)
+        // เอาครูออกจากวิชาที่เลิกสอน
         await Promise.all(
           toRemove.map(async (subjId) => {
             const ref = doc(db, "subjects", subjId);
             await runTransaction(db, async (tx) => {
               const snap = await tx.get(ref);
               if (!snap.exists()) return;
-              if (snap.data().teacherId === profileID) {
-                tx.update(ref, { teacherId: deleteField() });
+              
+              const currentTeachers = snap.data().teachers || [];
+              if (currentTeachers.includes(profileID)) {
+                tx.update(ref, { 
+                  teachers: currentTeachers.filter(id => id !== profileID) 
+                });
               }
             });
           })
         );
 
-        // ผูกครูเข้าวิชาใหม่ (ถ้าวิชายังว่างหรือเป็นคนเดิม)
+        // ผูกครูเข้าวิชาใหม่
         const conflicts = [];
         await Promise.all(
           toAdd.map(async (subjId) => {
@@ -872,16 +877,20 @@ function EditUserProfile() {
             await runTransaction(db, async (tx) => {
               const snap = await tx.get(ref);
               if (!snap.exists()) {
-                // ยังไม่มีเอกสารวิชา → สร้างและผูกครู
-                tx.set(ref, { teacherId: profileID }, { merge: true });
+                // ยังไม่มีเอกสารวิชา → สร้างและผูกครูในรูปแบบ Array
+                tx.set(ref, { teachers: [profileID] }, { merge: true });
                 return;
               }
-              const cur = snap.data().teacherId;
-              if (!cur || cur === profileID) {
-                tx.update(ref, { teacherId: profileID });
+              
+              const currentTeachers = snap.data().teachers || [];
+              // ถ้ายังว่างอยู่ หรือมีแค่เราสอนอยู่แล้ว ก็เพิ่มได้ (ยังคงกฎ 1 วิชามี 1 ครูไปก่อน)
+              if (currentTeachers.length === 0 || currentTeachers.includes(profileID)) {
+                if (!currentTeachers.includes(profileID)) {
+                  tx.update(ref, { teachers: [...currentTeachers, profileID] });
+                }
               } else {
-                // มีครูคนอื่นอยู่แล้ว → เก็บไว้แจ้งเตือน
-                conflicts.push({ subjId, currentTeacherId: cur });
+                // มีครูคนอื่นอยู่แล้ว -> เก็บไว้แจ้งเตือน และไม่อัปเดต
+                conflicts.push({ subjId, currentTeachers });
               }
             });
           })
