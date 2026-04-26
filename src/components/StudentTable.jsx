@@ -6,16 +6,23 @@ import { db } from "../firebase";
 import { onSnapshot, collection, doc, query, where } from "firebase/firestore";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
+import useClassLevels from "../hooks/useClassLevels";
 
 function StudentTable() {
   const { studentTableData } = useStudentTable();
   const { profileData } = useUserProfile();
   const { user } = useUserAuth();
+  const { levels, loading: levelsLoading } = useClassLevels();
 
   const [academicYears, setAcademicYears] = useState([]);
   const [regAcademicYear, setRegAcademicYear] = useState("");
   const [regSemester, setRegSemester] = useState(1);
 
+  
+  const [classLevel, setClassLevel] = useState("");
+  const [subjects, setSubjects] = useState([]);
+  const [teachersMap, setTeachersMap] = useState({});
+  
   useEffect(() => {
     if (!studentTableData || !classLevel) return;
 
@@ -35,9 +42,6 @@ function StudentTable() {
       setAcademicYears([]);
     }
   }, [studentTableData, classLevel]);
-  const [classLevel, setClassLevel] = useState("");
-  const [subjects, setSubjects] = useState([]);
-  const [teachersMap, setTeachersMap] = useState({});
 
 
 
@@ -86,14 +90,17 @@ function StudentTable() {
   const [regFri1430, setRegFri1430] = useState("-");
 
   useEffect(() => {
-    if (!profileData) return;
+    if (!profileData || !levels || levels.length === 0) return;
 
     const studentProfile = profileData.find((item) => item.id === user.uid);
 
     if (studentProfile) {
-      setClassLevel(studentProfile.user.classLevel);
+      const rawClassCode = studentProfile.user.class_ref; 
+      const matchedLevel = levels.find((l) => l.code === rawClassCode);
+      const fullClassName = matchedLevel ? matchedLevel.name_th : rawClassCode;
+      setClassLevel(fullClassName);
     }
-  }, [profileData]);
+  }, [profileData, user.uid, levels]);
 
   useEffect(() => {
     if (!studentTableData || !classLevel) return;

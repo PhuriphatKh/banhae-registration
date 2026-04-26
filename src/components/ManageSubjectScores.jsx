@@ -18,7 +18,7 @@ import {
   serverTimestamp,
   getDoc,
 } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import useClassLevels from "../hooks/useClassLevels";
 
 // ---------- Utilities ----------
 const pickGradeFromCriteria = (total, g) => {
@@ -124,6 +124,7 @@ function ManageSubjectScores() {
   const navigate = useNavigate();
   const { profileData } = useUserProfile();
   const { firstName, lastName } = useUserAuth();
+  const { levels, loading: levelsLoading } = useClassLevels();
 
   const thisYear = new Date().getFullYear() + 543;
 
@@ -146,7 +147,7 @@ function ManageSubjectScores() {
 
   useEffect(() => {
     if (!profileData?.length) return;
-    setStudents(profileData.filter((p) => p.user?.position === "นักเรียน"));
+    setStudents(profileData.filter((p) => p.user?.role === "student"));
   }, [profileData]);
 
   useEffect(() => {
@@ -365,10 +366,18 @@ function ManageSubjectScores() {
   };
 
   // ---------- Render ----------
-  const studentsInClass = students.filter(
-    (s) => s.user?.classLevel === subjectData?.classLevel
-  );
+  const studentsInClass = students.filter((s) => {
+    const rawClassCode = s.user?.class_ref || s.user?.classLevel;
+    
+    if (!levels || levels.length === 0) return false; 
 
+    const matchedLevel = levels.find((l) => l.code === rawClassCode);
+    
+    const fullClassName = matchedLevel ? matchedLevel.name_th : rawClassCode;
+    
+    return fullClassName === subjectData?.classLevel;
+  });
+  
   return (
     <div style={{ background: "#BBBBBB" }}>
       <Navbar />
