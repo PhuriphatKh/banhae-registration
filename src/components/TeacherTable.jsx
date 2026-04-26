@@ -5,13 +5,37 @@ import { useTeacherTable } from "../context/TeacherTableContext";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import logo from "../assets/logo.png";
+import { db } from "../firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 
 function TeacherTable() {
   const { teacherTableData } = useTeacherTable();
   const { user, userRole } = useUserAuth();
 
-  const [regAcademicYear, setRegAcademicYear] = useState(2567);
+  const [academicYears, setAcademicYears] = useState([]);
+  const [regAcademicYear, setRegAcademicYear] = useState("");
   const [regSemester, setRegSemester] = useState(1);
+
+  useEffect(() => {
+    if (!teacherTableData || !user?.uid) return;
+
+    const teacherDoc = teacherTableData.find((item) => item.id === user.uid);
+    if (teacherDoc) {
+      // ดึงคีย์ทั้งหมดที่เป็นตัวเลข (ปีการศึกษา) ออกมา
+      const years = Object.keys(teacherDoc)
+        .filter((key) => key !== "id" && !isNaN(Number(key)))
+        .sort(); // เรียงจากน้อยไปมาก
+        
+      if (years.length > 0) {
+        setAcademicYears(years.map((year) => ({ id: year })));
+        setRegAcademicYear((prev) => prev || Number(years[0]));
+      } else {
+        setAcademicYears([]);
+      }
+    } else {
+      setAcademicYears([]);
+    }
+  }, [teacherTableData, user?.uid]);
 
   const [regMon0830, setRegMon0830] = useState("-");
   const [regMon0930, setRegMon0930] = useState("-");
@@ -51,9 +75,14 @@ function TeacherTable() {
   useEffect(() => {
     if (!teacherTableData) return;
 
-    const table = teacherTableData.find(
-      (item) => item.id === user.uid + regAcademicYear + "_" + regSemester
+    const teacherDoc = teacherTableData.find(
+      (item) => item.id === user.uid
     );
+
+    let table = null;
+    if (teacherDoc && teacherDoc[regAcademicYear] && teacherDoc[regAcademicYear][regSemester]) {
+      table = teacherDoc[regAcademicYear][regSemester];
+    }
     if (table) {
       setRegMon0830(table.mon0830);
       setRegMon0930(table.mon0930);
@@ -153,8 +182,11 @@ function TeacherTable() {
                 <option value="" disabled>
                   -- ปีการศึกษา --
                 </option>
-                <option value="2567">ปีการศึกษา 2567</option>
-                <option value="2568">ปีการศึกษา 2568</option>
+                {academicYears.map((year) => (
+                  <option key={year.id} value={year.id}>
+                    ปีการศึกษา {year.id}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="custom-select">

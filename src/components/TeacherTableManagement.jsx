@@ -14,8 +14,8 @@ import {
   getDoc,
   onSnapshot,
   collection,
+  deleteField,
 } from "firebase/firestore";
-import logo from "../assets/logo.png";
 
 const SEMESTERS = [1, 2];
 
@@ -31,7 +31,7 @@ function TeacherTableManagement() {
   const [hidingAlert, setHidingAlert] = useState(false);
   const [academicYears, setAcademicYears] = useState([]);
   const [showYearModal, setShowYearModal] = useState(false);
-  const [regAcademicYear, setRegAcademicYear] = useState(2567);
+  const [regAcademicYear, setRegAcademicYear] = useState("");
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -39,8 +39,11 @@ function TeacherTableManagement() {
       (snapshot) => {
         const data = snapshot.data();
         if (data) {
-          const years = Object.keys(data);
+          const years = Object.keys(data).sort(); // เรียงจากน้อยไปมาก
           setAcademicYears(years.map((year) => ({ id: year })));
+          
+          setRegAcademicYear((prev) => prev || Number(years[0]));
+          
           console.log("Year data updated:", years);
         }
       }
@@ -95,38 +98,43 @@ function TeacherTableManagement() {
 
   const [error, setError] = useState("");
 
-  const [open1, setOpen1] = useState(false);
-  const [open2, setOpen2] = useState(false);
-  const [open3, setOpen3] = useState(false);
-
-  let menuRef1 = useRef();
-  let menuRef2 = useRef();
-  let menuRef3 = useRef();
-
   const { firstName, lastName, logOut } = useUserAuth();
   const { profileData } = useUserProfile();
   const { teacherTableData } = useTeacherTable();
 
   useEffect(() => {
-    if (!profileData) return;
+    if (!profileData || profileData.length === 0) return;
+    if (regTeacherID) return; // ไม่ให้รีเซ็ตถ้าเลือกไปแล้ว
 
-    const loadTeacher = profileData.find(
-      (item) => item.user?.position === "ครู"
+    const teachers = profileData.filter(
+      (item) => item.user?.role === "teacher"
     );
-    if (loadTeacher) {
+
+    if (teachers.length > 0) {
+      // เรียงลำดับให้ตรงกับใน Dropdown ก่อนเลือกคนแรก
+      const sortedTeachers = [...teachers].sort((a, b) => 
+        (a.user?.teacherID || "") > (b.user?.teacherID || "") ? 1 : -1
+      );
+      
+      const loadTeacher = sortedTeachers[0];
       setRegTeacherName(
         loadTeacher.user.firstName + " " + loadTeacher.user.lastName
       );
       setRegTeacherID(loadTeacher.id);
     }
-  }, [profileData]);
+  }, [profileData, regTeacherID]);
 
   useEffect(() => {
     if (!teacherTableData) return;
 
-    const table = teacherTableData.find(
-      (item) => item.id === regTeacherID + regAcademicYear + "_" + regSemester
+    const teacherDoc = teacherTableData.find(
+      (item) => item.id === regTeacherID
     );
+
+    let table = null;
+    if (teacherDoc && teacherDoc[regAcademicYear] && teacherDoc[regAcademicYear][regSemester]) {
+      table = teacherDoc[regAcademicYear][regSemester];
+    }
 
     if (table) {
       setRegMon0830(table.mon0830);
@@ -254,12 +262,13 @@ function TeacherTableManagement() {
       };
 
       await setDoc(
-        doc(
-          db,
-          "teacher_table",
-          teacherID + regAcademicYear + "_" + regSemester
-        ),
-        regTeacherTable
+        doc(db, "teacher_table", teacherID),
+        {
+          [regAcademicYear]: {
+            [regSemester]: regTeacherTable
+          }
+        },
+        { merge: true }
       );
       console.log("Data saved to FireStore!");
 
@@ -333,7 +342,7 @@ function TeacherTableManagement() {
   }, []);
 
   const filteredData = profileData.filter(
-    (item) => item.user?.position === "ครู"
+    (item) => item.user?.role === "teacher"
   );
 
   return (
@@ -398,7 +407,7 @@ function TeacherTableManagement() {
                           ))}
                       </Form.Select>
                     </div>
-                    <div class="select-wrapper" style={{ width: "33.33%" }}>
+                    <div className="select-wrapper" style={{ width: "33.33%" }}>
                       <Form.Select
                         className="modern-select text-center"
                         style={{ fontSize: "0.8vw", height: "3rem" }}
@@ -417,7 +426,7 @@ function TeacherTableManagement() {
                         ))}
                       </Form.Select>
                     </div>
-                    <div class="select-wrapper" style={{ width: "33.33%" }}>
+                    <div className="select-wrapper" style={{ width: "33.33%" }}>
                       <Form.Select
                         className="modern-select text-center"
                         style={{ fontSize: "0.8vw", height: "3rem" }}
