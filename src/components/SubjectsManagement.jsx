@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router";
-import { useUserAuth } from "../context/UserAuthContext";
+
 import { useUserProfile } from "../context/ProfileDataContex";
-import { Form, Alert, Button, Modal, Row, Col, Card } from "react-bootstrap";
+import { Form, Button, Modal, Row, Col, Card } from "react-bootstrap";
 import { db } from "../firebase";
 import { onSnapshot } from "firebase/firestore";
 import {
@@ -18,6 +17,7 @@ import {
 import logo from "../assets/logo.png";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
+import useClassLevels from "../hooks/useClassLevels";
 
 function SubjectsManagement() {
   const [regClassLevel, setRegClassLevel] = useState("ประถมศึกษาปีที่ 1");
@@ -43,6 +43,7 @@ function SubjectsManagement() {
   const [error, setError] = useState("");
 
   const { profileData } = useUserProfile();
+  const { levels, loading } = useClassLevels();
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "subjects"), (snapshot) => {
@@ -145,16 +146,25 @@ function SubjectsManagement() {
     }
   };
 
-  function getTeacherName(teacherId) {
-    const teacherProfile = profileData.find((profileData) => {
-      return profileData.id === teacherId;
-    });
-    return (
-      (teacherProfile?.user?.firstName || "-") +
-      " " +
-      (teacherProfile?.user?.lastName || "-")
-    );
+  function getTeacherNames(teacherIds) {
+  if (!Array.isArray(teacherIds) || teacherIds.length === 0) {
+    return "-";
   }
+
+  const names = teacherIds.map((id) => {
+    const teacherProfile = profileData.find((profile) => profile.id === id);
+    
+    if (teacherProfile && teacherProfile.user) {
+      const fname = teacherProfile.user.firstName || "";
+      const lname = teacherProfile.user.lastName || "";
+      return `${fname} ${lname}`.trim(); 
+    }
+    
+    return null;
+  });
+
+  return names.filter(Boolean).join(", ") || "-";
+}
 
   return (
     <div className="page" style={{ backgroundColor: "#BBBBBB" }}>
@@ -174,26 +184,19 @@ function SubjectsManagement() {
               <Col md={2}>
                 <div className="select-wrapper">
                   <Form.Select
-                    value={studentClass}
-                    onChange={(e) => setStudentClass(e.target.value)}
-                    className="modern-select text-center"
-                  >
-                    <option value="" disabled>
-                      -- เลือกชั้นเรียน --
-                    </option>
-                    {[
-                      "ประถมศึกษาปีที่ 1",
-                      "ประถมศึกษาปีที่ 2",
-                      "ประถมศึกษาปีที่ 3",
-                      "ประถมศึกษาปีที่ 4",
-                      "ประถมศึกษาปีที่ 5",
-                      "ประถมศึกษาปีที่ 6",
-                    ].map((year) => (
-                      <option key={year} value={year}>
-                        {year}
+                      value={studentClass}
+                      onChange={(e) => setStudentClass(e.target.value)}
+                      className="modern-select text-center"
+                    >
+                      <option value="" disabled>
+                        -- เลือกชั้นเรียน --
                       </option>
-                    ))}
-                  </Form.Select>
+                      {levels.map((level) => (
+                        <option key={level.id} value={level.name_th}>
+                          {level.name_th}
+                        </option>
+                      ))}
+                    </Form.Select>
                 </div>
               </Col>
               <Col className="d-flex justify-content-end">
@@ -286,7 +289,7 @@ function SubjectsManagement() {
                                 </td>
                                 <td>
                                   <div className="d-flex justify-content-center align-items-center w-100 h-100 py-2">
-                                    {getTeacherName(subject.teacherId)}
+                                    {getTeacherNames(subject.teachers)}
                                   </div>
                                 </td>
                                 <td>
@@ -372,16 +375,9 @@ function SubjectsManagement() {
                                 <option value="" disabled>
                                   -- เลือกชั้นเรียน --
                                 </option>
-                                {[
-                                  "ประถมศึกษาปีที่ 1",
-                                  "ประถมศึกษาปีที่ 2",
-                                  "ประถมศึกษาปีที่ 3",
-                                  "ประถมศึกษาปีที่ 4",
-                                  "ประถมศึกษาปีที่ 5",
-                                  "ประถมศึกษาปีที่ 6",
-                                ].map((year) => (
-                                  <option key={year} value={year}>
-                                    {year}
+                                {levels.map((level) => (
+                                  <option key={level.id} value={level.name_th}>
+                                    {level.name_th}
                                   </option>
                                 ))}
                               </Form.Select>
