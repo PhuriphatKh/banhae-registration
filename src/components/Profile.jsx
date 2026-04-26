@@ -6,6 +6,7 @@ import "./Profile.css";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import useRoles from "../hooks/useRoles";
+import useClassLevels from "../hooks/useClassLevels";
 
 // ส่วนแสดงข้อมูลสมาชิกในครอบครัว
 const FamilyInfoSection = ({
@@ -73,6 +74,7 @@ function Profile() {
   const location = useLocation();
   const navigate = useNavigate();
   const { roles } = useRoles();
+  const { levels: classLevelsData } = useClassLevels();
 
   // get profile ID from URL query parameters
   useEffect(() => {
@@ -99,7 +101,7 @@ function Profile() {
               firstName: d.user?.firstName || "-",
               lastName: d.user?.lastName || "-",
               role: d.user?.role || "-",
-              classLevel: d.user?.classLevel || "-",
+              classLevel: d.user?.classLevel || d.user?.class_ref || "-",
               taughtSubject: d.user?.taughtSubject || [],
               birthDate: d.user?.birthDate || "-",
               gender: d.user?.gender || "-",
@@ -171,6 +173,17 @@ function Profile() {
   const userInfo = profileData.profile?.user || {};
   const displayRole = roles?.find((r) => r.id === userInfo.role)?.name_th || userInfo.role;
 
+  const getClassName = (val) => {
+    if (!val || val === "-") return "-";
+    if (classLevelsData) {
+      const found = classLevelsData.find(
+        (l) => l.id === val || l.code === val || l.name_th === val
+      );
+      if (found) return found.name_th;
+    }
+    return val;
+  };
+
   return (
     <div className="profile-page">
       {/* Top Navbar */}
@@ -236,21 +249,21 @@ function Profile() {
                               return (
                                 <div key={subjectId}>
                                   {subject
-                                    ? subject.classLevel
+                                    ? getClassName(subject.classLevel)
                                     : "ไม่พบชั้นเรียน"}
                                 </div>
                               );
                             })
-                          : subjects.find(
+                          : getClassName(subjects.find(
                               (s) => s.id === userInfo?.taughtSubject
-                            )?.classLevel || "-"}
+                            )?.classLevel) || "-"}
                       </div>
                     </div>
                   </td>
                 ) : userInfo?.role === "student" ? (
                   <td>
                     <div className="d-flex flex-column justify-content-center align-items-start w-100 h-100">
-                      {userInfo.classLevel || "-"}
+                      {getClassName(userInfo.classLevel)}
                     </div>
                   </td>
                 ) : null}

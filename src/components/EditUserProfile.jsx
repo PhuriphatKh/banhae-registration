@@ -207,10 +207,7 @@ function EditUserProfile() {
         setRegFirstName(newData.user?.firstName || "");
         setRegLastName(newData.user?.lastName || "");
         setRegRole(newData.user?.role || "");
-        if (levels.length > 0 && newData.user?.class_ref) {
-          const found = levels.find((l) => l.code === newData.user.class_ref);
-          setRegClassLevel(found ? found.name_th : newData.user.class_ref);
-        }
+        setRegClassLevel(newData.user?.classLevel || newData.user?.class_ref || "");
         setRegReligion(newData.user?.religion || "");
         setRegEthnicity(newData.user?.ethnicity || "");
         setRegNationality(newData.user?.nationality || "");
@@ -1129,7 +1126,11 @@ function EditUserProfile() {
                 <>
                   <Form.Label>ระดับชั้น</Form.Label>
                   <Form.Control
-                    value={regClassLevel}
+                    value={(() => {
+                      if (!regClassLevel) return "";
+                      const found = levels.find((l) => l.id === regClassLevel || l.code === regClassLevel || l.name_th === regClassLevel);
+                      return found ? found.name_th : regClassLevel;
+                    })()}
                     onChange={(e) => setRegClassLevel(e.target.value)}
                     disabled
                   />
