@@ -132,7 +132,7 @@ function ApprovalRequest() {
                       )}
                       {request.status === "canceled" && (
                         <span style={{ color: "red", fontWeight: "bold" }}>
-                          ผู้ยกเลิก: {request.approverName || "-"} <br />
+                          ผู้ยกเลิก: {request.requesterName || "-"} <br />
                           ยกเลิกเมื่อ:{" "}
                           {request.canceledAt && request.canceledAt.toDate
                             ? request.canceledAt.toDate().toLocaleString()
