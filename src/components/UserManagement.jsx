@@ -5,12 +5,11 @@ import { useUserProfile } from "../context/ProfileDataContex";
 import { Form, Button, Modal, Row, Col, Card } from "react-bootstrap";
 import { db } from "../firebase";
 import {
-  collection,
+  runTransaction,
   updateDoc,
   setDoc,
   getDoc,
   doc,
-  onSnapshot,
   arrayUnion,
 } from "firebase/firestore";
 import Navbar from "./Navbar";
@@ -54,39 +53,45 @@ function UserManagement() {
   const { levels, loading } = useClassLevels();
   const { roles, loading: rolesLoading } = useRoles();
 
-  // Configuration for roles and their corresponding Firestore fields
   const ROLE_COUNTER_MAP = {
-    student: { setter: setStudentID },
-    teacher: { setter: setTeacherID },
-    admin: { setter: setAdminID },
-    manager: { setter: setManagerID },
+    admin: { setter: setAdminID, field: "lastAdminID" },
+    manager: { setter: setManagerID, field: "lastManagerID" },
+    student: { setter: setStudentID, field: "lastStudentID" },
+    teacher: { setter: setTeacherID, field: "lastTeacherID" },
   };
 
   // Generic function to generate IDs
   async function generateID(role) {
-    let newID = null;
-    const config = ROLE_COUNTER_MAP[role];
-    if (!config) return null;
+  let newID = null;
+  const config = ROLE_COUNTER_MAP[role]; 
+  if (!config) return null;
 
-    try {
-      // Use the new schema: collection "id_counters", document name is the role
-      const counterRef = doc(db, "id_counter", role);
-      const counterDoc = await getDoc(counterRef);
+  try {
+    const docId = import.meta.env.VITE_ID_COUNTER_DOC_ID;
+    const counterRef = doc(db, "id_counter", docId);
 
-      if (counterDoc.exists()) {
-        const currentVal = counterDoc.data().count;
-        if (typeof currentVal === "number") {
-          newID = currentVal + 1;
-          // Update the "count" field
-          await updateDoc(counterRef, { count: newID });
-          config.setter(newID + 1); // Update display for *next* user
-        }
-      } else {
-        console.log(`ไม่พบเอกสาร counter สำหรับ ${role}`);
+    await runTransaction(db, async (transaction) => {
+      const counterDoc = await transaction.get(counterRef);
+      if (!counterDoc.exists()) {
+        throw "ไม่พบเอกสาร counter หลักในฐานข้อมูล";
       }
-    } catch (error) {
-      console.log("เกิดข้อผิดพลาด:", error);
+
+      const currentVal = counterDoc.data()[config.field];
+      if (typeof currentVal === "number") {
+        newID = currentVal + 1;
+        
+        transaction.update(counterRef, { [config.field]: newID });
+      }
+    });
+
+    if (newID !== null) {
+      config.setter(newID + 1); 
     }
+
+    } catch (error) {
+      console.log("เกิดข้อผิดพลาดในการสร้าง ID:", error);
+    }
+  
     return newID;
   }
 
@@ -94,22 +99,30 @@ function UserManagement() {
   useEffect(() => {
     const fetchCounters = async () => {
       try {
-        const roles = Object.keys(ROLE_COUNTER_MAP);
-        
-        // Fetch each role's counter in parallel or sequential
-        for (const role of roles) {
-          const counterDoc = await getDoc(doc(db, "id_counter", role));
-          if (counterDoc.exists()) {
-             const data = counterDoc.data();
-             if (typeof data.count === "number") {
-               ROLE_COUNTER_MAP[role].setter(data.count + 1);
-             }
+        const docId = import.meta.env.VITE_ID_COUNTER_DOC_ID;
+        const counterDocRef = doc(db, "id_counter", docId);
+        const counterDoc = await getDoc(counterDocRef);
+
+        if (counterDoc.exists()) {
+          const data = counterDoc.data();
+          const roles = Object.keys(ROLE_COUNTER_MAP);
+          
+          for (const role of roles) {
+            const config = ROLE_COUNTER_MAP[role];
+            const currentValue = data[config.field];
+
+            if (typeof currentValue === "number") {
+              config.setter(currentValue + 1); 
+            }
           }
+        } else {
+          console.log("ไม่พบ Document เก็บ Counter");
         }
       } catch (err) {
         console.error("Error fetching counters:", err);
       }
     };
+
     fetchCounters();
   }, []);
 
@@ -206,6 +219,10 @@ function UserManagement() {
 
       if (regRole === "student") {
         userProfile.user.class_ref = regClassRef;
+      }
+
+      if (regRole === "teacher" && regtaughtSubject) {
+        userProfile.user.taughtSubject = [regtaughtSubject];
       }
 
       await setDoc(doc(db, "profile", user.uid), userProfile);
@@ -615,7 +632,6 @@ function UserManagement() {
               </Modal.Body>
             </Modal>
 
-            {/* Delete Confirmation Modal */}
             <Modal show={showDeleteModal} onHide={handleCloseDeleteModal} centered>
               <Modal.Header closeButton>
                 <Modal.Title className="fw-bold">ยืนยันการลบ</Modal.Title>
