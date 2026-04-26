@@ -13,27 +13,10 @@ import {
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import { useStudentTable } from "../context/StudentTableContex";
+import useClassLevels from "../hooks/useClassLevels";
 
-// --- Static configs (ย้ายออกนอก component เพื่อลด re-create) ---
-const CLASS_TABLE_IDS = {
-  "ประถมศึกษาปีที่ 1": "j8AzXNhqKwCBoInfAt1f",
-  "ประถมศึกษาปีที่ 2": "jehvrtW8WQnbgQUFpQ3A",
-  "ประถมศึกษาปีที่ 3": "N0UMUb6jNC3f0bMjgEyZ",
-  "ประถมศึกษาปีที่ 4": "kpSW5PxJ5xgxg3EEI7om",
-  "ประถมศึกษาปีที่ 5": "Vr4gnaex3VvDpYpkSerq",
-  "ประถมศึกษาปีที่ 6": "idKJQ8WN6fLccjCX5RCK",
-};
-
+// --- Static configs ---
 const SEMESTERS = [1, 2];
-
-const CLASS_TABLE = [
-  "ประถมศึกษาปีที่ 1",
-  "ประถมศึกษาปีที่ 2",
-  "ประถมศึกษาปีที่ 3",
-  "ประถมศึกษาปีที่ 4",
-  "ประถมศึกษาปีที่ 5",
-  "ประถมศึกษาปีที่ 6",
-];
 
 // คีย์ชื่อคาบเรียนทั้งหมด เพื่อช่วย loop set/get
 const PERIOD_KEYS = [
@@ -72,6 +55,22 @@ const PERIOD_KEYS = [
 function StudentTableManagement() {
   const [newYear, setNewYear] = useState("");
   const { studentTableData } = useStudentTable();
+  const { levels: classLevelsData } = useClassLevels();
+
+  const classTableIdsMap = useMemo(() => {
+    const map = {};
+    if (classLevelsData) {
+      classLevelsData.forEach((item) => {
+        map[item.name_th] = item.id;
+      });
+    }
+    return map;
+  }, [classLevelsData]);
+
+  const classTableArray = useMemo(() => {
+    return classLevelsData ? classLevelsData.map((item) => item.name_th) : [];
+  }, [classLevelsData]);
+
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [hidingAlert, setHidingAlert] = useState(false);
   const [academicYears, setAcademicYears] = useState([]);
@@ -81,11 +80,15 @@ function StudentTableManagement() {
     const unsubscribe = onSnapshot(
       doc(db, "student_table", "year"),
       (snapshot) => {
-        const data = snapshot.data(); // ดึงข้อมูลทั้งหมดในเอกสาร
+        const data = snapshot.data();
         if (data) {
-          const years = Object.keys(data); // ดึงชื่อฟิลด์ทั้งหมด (2567, 2568, 2569)
-          setAcademicYears(years.map((year) => ({ id: year }))); // แปลงเป็นอาร์เรย์ของอ็อบเจ็กต์
-          console.log("Year data updated:", years);
+          const years = Object.keys(data).sort(); // เรียงปีจากน้อยไปมาก
+          setAcademicYears(years.map((year) => ({ id: year })));
+          
+          setRegAcademicYear((prev) => {
+             if (!prev || !years.includes(String(prev))) return Number(years[0]);
+             return prev;
+          });
         }
       }
     );
@@ -94,9 +97,16 @@ function StudentTableManagement() {
   }, []);
 
   // === States พื้นฐาน ===
-  const [regAcademicYear, setRegAcademicYear] = useState(2567);
+  const [regAcademicYear, setRegAcademicYear] = useState("");
   const [regSemester, setRegSemester] = useState(1);
   const [regClassLevel, setRegClassLevel] = useState("ประถมศึกษาปีที่ 1");
+
+  useEffect(() => {
+    if (classTableArray.length > 0 && !classTableArray.includes(regClassLevel)) {
+      setRegClassLevel(classTableArray[0]);
+    }
+  }, [classTableArray, regClassLevel]);
+
   const [subjects, setSubjects] = useState([]);
   const [teachersMap, setTeachersMap] = useState({});
   const [regTimeTable, setRegTimeTable] = useState([
@@ -183,18 +193,18 @@ function StudentTableManagement() {
   );
 
   const tableID = useMemo(
-    () => CLASS_TABLE_IDS[regClassLevel] || "",
-    [regClassLevel]
+    () => classTableIdsMap[regClassLevel] || "",
+    [regClassLevel, classTableIdsMap]
   );
 
   // ดึงข้อมูลตารางเรียนของชั้น/ปี/เทอมปัจจุบัน
-  const table = useMemo(
-    () =>
-      studentTableData.find(
-        (item) => item.id === tableID + regAcademicYear + "_" + regSemester
-      ),
-    [studentTableData, tableID, regAcademicYear, regSemester]
-  );
+  const table = useMemo(() => {
+    const classDoc = studentTableData.find((item) => item.id === regClassLevel);
+    if (classDoc && classDoc[regAcademicYear] && classDoc[regAcademicYear][regSemester]) {
+      return classDoc[regAcademicYear][regSemester];
+    }
+    return null;
+  }, [studentTableData, regClassLevel, regAcademicYear, regSemester]);
 
   // โหลดชื่อครูจาก Firestore (แก้บั๊กตัวแปร last ไม่ได้ประกาศ)
   useEffect(() => {
@@ -332,8 +342,13 @@ function StudentTableManagement() {
       };
 
       await setDoc(
-        doc(db, "student_table", tableID + regAcademicYear + "_" + regSemester),
-        studentTable
+        doc(db, "student_table", regClassLevel),
+        {
+          [regAcademicYear]: {
+            [regSemester]: studentTable,
+          },
+        },
+        { merge: true }
       );
       console.log("Data saved to FireStore!");
 
@@ -377,6 +392,8 @@ function StudentTableManagement() {
 
   // โหลดรายวิชาตามชั้นเรียน
   useEffect(() => {
+    if (!regClassLevel) return; // ป้องกัน query error หากค่า regClassLevel เป็น undefined
+
     const q = query(
       collection(db, "subjects"),
       where("classLevel", "==", regClassLevel)
@@ -466,7 +483,7 @@ function StudentTableManagement() {
                         <option value="" disabled>
                           -- เลือกชั้นเรียน --
                         </option>
-                        {CLASS_TABLE.map((classItem) => (
+                        {classTableArray.map((classItem) => (
                           <option key={classItem} value={classItem}>
                             {classItem}
                           </option>

@@ -12,20 +12,34 @@ function StudentTable() {
   const { profileData } = useUserProfile();
   const { user } = useUserAuth();
 
-  const [regAcademicYear, setRegAcademicYear] = useState(2567);
+  const [academicYears, setAcademicYears] = useState([]);
+  const [regAcademicYear, setRegAcademicYear] = useState("");
   const [regSemester, setRegSemester] = useState(1);
+
+  useEffect(() => {
+    if (!studentTableData || !classLevel) return;
+
+    const classDoc = studentTableData.find((item) => item.id === classLevel);
+    if (classDoc) {
+      const years = Object.keys(classDoc)
+        .filter((key) => key !== "id" && !isNaN(Number(key)))
+        .sort();
+        
+      if (years.length > 0) {
+        setAcademicYears(years.map((year) => ({ id: year })));
+        setRegAcademicYear((prev) => prev || Number(years[0]));
+      } else {
+        setAcademicYears([]);
+      }
+    } else {
+      setAcademicYears([]);
+    }
+  }, [studentTableData, classLevel]);
   const [classLevel, setClassLevel] = useState("");
   const [subjects, setSubjects] = useState([]);
   const [teachersMap, setTeachersMap] = useState({});
 
-  const classTableIDs = {
-    "ประถมศึกษาปีที่ 1": "j8AzXNhqKwCBoInfAt1f",
-    "ประถมศึกษาปีที่ 2": "jehvrtW8WQnbgQUFpQ3A",
-    "ประถมศึกษาปีที่ 3": "N0UMUb6jNC3f0bMjgEyZ",
-    "ประถมศึกษาปีที่ 4": "kpSW5PxJ5xgxg3EEI7om",
-    "ประถมศึกษาปีที่ 5": "Vr4gnaex3VvDpYpkSerq",
-    "ประถมศึกษาปีที่ 6": "idKJQ8WN6fLccjCX5RCK",
-  };
+
 
   const classTable = [
     "ประถมศึกษาปีที่ 1",
@@ -82,13 +96,14 @@ function StudentTable() {
   }, [profileData]);
 
   useEffect(() => {
-    if (!studentTableData) return;
+    if (!studentTableData || !classLevel) return;
 
-    const tableID = classTableIDs[classLevel] || "";
-
-    const table = studentTableData.find(
-      (item) => item.id === tableID + regAcademicYear + "_" + regSemester
-    );
+    const classDoc = studentTableData.find((item) => item.id === classLevel);
+    let table = null;
+    
+    if (classDoc && classDoc[regAcademicYear] && classDoc[regAcademicYear][regSemester]) {
+      table = classDoc[regAcademicYear][regSemester];
+    }
 
     if (table) {
       setRegMon0830(table.mon0830);
@@ -261,8 +276,11 @@ function StudentTable() {
                 <option value="" disabled>
                   -- ปีการศึกษา --
                 </option>
-                <option value="2567">ปีการศึกษา 2567</option>
-                <option value="2568">ปีการศึกษา 2568</option>
+                {academicYears.map((year) => (
+                  <option key={year.id} value={year.id}>
+                    ปีการศึกษา {year.id}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="custom-select">
@@ -448,9 +466,7 @@ function StudentTable() {
         </div>
       </div>
 
-      <div className="footer">
-        <div className="custom-h3">ติดต่อเรา</div>
-      </div>
+      <Footer />
     </div>
   );
 }

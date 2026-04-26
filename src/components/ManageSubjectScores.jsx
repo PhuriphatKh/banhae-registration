@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Form, Alert } from "react-bootstrap";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Form, Alert, Modal, Button } from "react-bootstrap";
 import { useLocation, useNavigate } from "react-router";
 import { useUserProfile } from "../context/ProfileDataContex";
 import { useUserAuth } from "../context/UserAuthContext";
@@ -50,26 +50,26 @@ const isExceeded = (value, scoringCriteria, term, field) => {
 };
 
 // ---------- Reusable Component ----------
-const ScoreInput = ({ value, onChange, readOnly, max, exceeded }) => {
-  const [tempExceeded, setTempExceeded] = useState(false);
+const ScoreInput = ({ value, onChange, readOnly, exceeded, onBlurExceeded }) => {
+  const inputRef = useRef(null);
 
-  useEffect(() => {
-    if (exceeded) {
-      setTempExceeded(true);
-      const timer = setTimeout(() => setTempExceeded(false), 500); // แสดงขอบแดง 0.5 วินาที
-      return () => clearTimeout(timer); // Cleanup timer
+  const handleBlur = () => {
+    if (exceeded && onBlurExceeded) {
+      onBlurExceeded(inputRef.current);
     }
-  }, [exceeded]);
+  };
 
   return (
     <Form.Control
+      ref={inputRef}
       className="text-center"
       type="number"
       value={value || ""}
       onChange={onChange}
+      onBlur={handleBlur}
       readOnly={readOnly}
       style={
-        exceeded || tempExceeded
+        exceeded
           ? { border: "2px solid #dc3545", transition: "border 0.3s ease" }
           : {}
       }
@@ -96,6 +96,29 @@ function ManageSubjectScores() {
   const [open, setOpen] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [hidingAlert, setHidingAlert] = useState(false);
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [fieldToFocus, setFieldToFocus] = useState(null);
+  const isModalShowing = useRef(false);
+
+  const handleBlurExceeded = (element) => {
+    if (isModalShowing.current) return;
+    isModalShowing.current = true;
+    setFieldToFocus(element);
+    setShowWarningModal(true);
+  };
+
+  const closeWarningModal = () => {
+    setShowWarningModal(false);
+  };
+
+  const handleModalExited = () => {
+    isModalShowing.current = false;
+    if (fieldToFocus) {
+      fieldToFocus.focus();
+      fieldToFocus.select();
+      setFieldToFocus(null);
+    }
+  };
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -157,16 +180,30 @@ function ManageSubjectScores() {
   }, [subjectID, subjectData]);
 
   // ---------- Handlers ----------
+  const hasExceededScore = useMemo(() => {
+    if (!students || !studentScores || !scoringCriteria) return false;
+    for (const student of students) {
+      const sid = student.user?.studentID;
+      if (!sid) continue;
+      const sScore = studentScores[sid] || {};
+      for (const term of ["term_1", "term_2"]) {
+        const tScore = sScore[term] || {};
+        for (const field of ["indicator", "during", "final"]) {
+          if (isExceeded(tScore[field], scoringCriteria, term, field)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }, [students, studentScores, scoringCriteria]);
+
   const handleScoreChange = (studentID, term, field, value) => {
     setStudentScores((prev) => {
       const prevStudent = prev[studentID] || {};
       const prevTerm = prevStudent[term] || {};
       const numericValue = value === "" ? "" : Number(value);
 
-      const maxForField = getMaxFor(scoringCriteria, term, field);
-      const exceeded = maxForField !== undefined && numericValue > maxForField;
-
-      // หากเกิน ให้ตั้งค่าเกินไว้ก่อน
       const newTerm = {
         ...prevTerm,
         [field]: numericValue,
@@ -178,32 +215,6 @@ function ManageSubjectScores() {
       }
 
       const updatedStudent = { ...prevStudent, [term]: newTerm };
-
-      // หากเกิน ให้หน่วงเวลา 0.5 วินาทีก่อน clamp
-      if (exceeded) {
-        setTimeout(() => {
-          setStudentScores((prevClamp) => {
-            const clampedValue = Math.min(numericValue, maxForField);
-            const clampedTerm = {
-              ...prevClamp[studentID][term],
-              [field]: clampedValue,
-            };
-
-            if (["during", "final"].includes(field)) {
-              clampedTerm.total =
-                Number(clampedTerm.during || 0) + Number(clampedTerm.final || 0);
-            }
-
-            return {
-              ...prevClamp,
-              [studentID]: {
-                ...prevClamp[studentID],
-                [term]: clampedTerm,
-              },
-            };
-          });
-        }, 500); // หน่วงเวลา 0.5 วินาที
-      }
 
       return { ...prev, [studentID]: updatedStudent };
     });
@@ -619,7 +630,7 @@ function ManageSubjectScores() {
                           {student.user.firstName} {student.user.lastName}
                         </td>
                         <td className="text-center">
-                          <ScoreInput
+                          <ScoreInput onBlurExceeded={handleBlurExceeded}
                             value={t1.indicator}
                             onChange={(e) =>
                               handleScoreChange(sid, "term_1", "indicator", e.target.value)
@@ -629,7 +640,7 @@ function ManageSubjectScores() {
                           />
                         </td>
                         <td className="text-center">
-                          <ScoreInput
+                          <ScoreInput onBlurExceeded={handleBlurExceeded}
                             value={t1.during}
                             onChange={(e) =>
                               handleScoreChange(sid, "term_1", "during", e.target.value)
@@ -639,7 +650,7 @@ function ManageSubjectScores() {
                           />
                         </td>
                         <td className="text-center">
-                          <ScoreInput
+                          <ScoreInput onBlurExceeded={handleBlurExceeded}
                             value={t1.final}
                             onChange={(e) =>
                               handleScoreChange(sid, "term_1", "final", e.target.value)
@@ -660,7 +671,7 @@ function ManageSubjectScores() {
                           />
                         </td>
                         <td className="text-center">
-                          <ScoreInput
+                          <ScoreInput onBlurExceeded={handleBlurExceeded}
                             value={t2.indicator}
                             onChange={(e) =>
                               handleScoreChange(sid, "term_2", "indicator", e.target.value)
@@ -670,7 +681,7 @@ function ManageSubjectScores() {
                           />
                         </td>
                         <td className="text-center">
-                          <ScoreInput
+                          <ScoreInput onBlurExceeded={handleBlurExceeded}
                             value={t2.during}
                             onChange={(e) =>
                               handleScoreChange(sid, "term_2", "during", e.target.value)
@@ -680,7 +691,7 @@ function ManageSubjectScores() {
                           />
                         </td>
                         <td className="text-center">
-                          <ScoreInput
+                          <ScoreInput onBlurExceeded={handleBlurExceeded}
                             value={t2.final}
                             onChange={(e) =>
                               handleScoreChange(sid, "term_2", "final", e.target.value)
@@ -783,6 +794,22 @@ function ManageSubjectScores() {
           onSave={handleSaveSettings}
           initial={gradingCriteria}
         />
+        {/* Warning Modal */}
+        <Modal show={showWarningModal} onHide={closeWarningModal} onExited={handleModalExited} centered>
+          <Modal.Header closeButton className="bg-danger text-white">
+            <Modal.Title>เกิดข้อผิดพลาด</Modal.Title>
+          </Modal.Header>
+          <Modal.Body className="text-center py-4">
+            <h5 className="text-danger mb-3">⚠️ แจ้งเตือน!</h5>
+            <p className="mb-0">คุณได้กรอกคะแนนเกินกว่าเกณฑ์ที่กำหนด</p>
+            <p className="mb-0">กรุณาตรวจสอบและแก้ไขให้ถูกต้อง</p>
+          </Modal.Body>
+          <Modal.Footer className="justify-content-center">
+            <Button variant="secondary" onClick={closeWarningModal}>
+              กลับไปแก้ไข
+            </Button>
+          </Modal.Footer>
+        </Modal>
       </div>
       <Footer />
     </div>
